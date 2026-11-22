@@ -1,0 +1,27 @@
+name: Build Scorch (macOS)
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+      - name: Build
+        run: cmake --build build --config Release --parallel 4
+      - name: Ad-hoc sign and package
+        run: |
+          mkdir -p dist
+          for f in $(find build -maxdepth 5 \( -name "Scorch.component" -o -name "Scorch.vst3" -o -name "Scorch.app" \)); do
+            codesign --force --deep -s - "$f"
+            cp -R "$f" dist/
+          done
+          ls dist
+          cd dist && ditto -c -k --sequesterRsrc --keepParent . ../Scorch-macOS.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Scorch-macOS
+          path: Scorch-macOS.zip
